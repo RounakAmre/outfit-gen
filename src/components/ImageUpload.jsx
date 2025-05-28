@@ -26,7 +26,7 @@ function ImageUpload() {
     formData.append("image", image);
 
     try {
-      const res = await fetch("http://localhost:8000/api/analyze", {
+      const res = await fetch("https://outfitter-backend-n1hd.onrender.com/api/analyze", {
         method: "POST",
         body: formData,
       });
