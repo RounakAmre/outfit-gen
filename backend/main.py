@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from google.cloud import vision
 import io
@@ -35,7 +35,12 @@ label_map = {
 }
 
 @app.post("/api/analyze")
-async def analyze_image(image: UploadFile = File(...)):
+async def analyze_image(
+    image: UploadFile = File(...),
+    occasion: str = Form(...),
+    weather: str = Form(...),
+    temperature: str = Form(...)
+):
     content = await image.read()
     vision_image = vision.Image(content=content)
 
@@ -82,7 +87,7 @@ async def analyze_image(image: UploadFile = File(...)):
     rgb_str = f"rgb({rgb[0]}, {rgb[1]}, {rgb[2]})"
 
     # Step 4: AI outfit suggestions
-    suggestions = get_ai_suggestions(article, rgb)
+    suggestions = get_ai_suggestions(article, rgb, occasion, weather, temperature)
 
     return {
         "article": article,
@@ -90,10 +95,11 @@ async def analyze_image(image: UploadFile = File(...)):
         "suggestions": suggestions
     }
 
-def get_ai_suggestions(article, rgb):
+def get_ai_suggestions(article, rgb, occasion, weather, temperature):
     prompt = (
-        f"Suggest 3 casual and stylish outfit combinations for a {article.lower()} of color rgb{rgb}. "
-        f"Keep the suggestions wearable, trendy, and age-neutral."
+        f"Suggest 3 stylish and practical outfits featuring a {article.lower()} of color rgb{rgb}. "
+        f"The user will wear it for a '{occasion}' in '{weather}' weather around {temperature}°F. "
+        f"Give complete outfits that match the scenario, and ensure the styles are wearable and trendy."
     )
 
     if OPENAI_API_KEY:
@@ -118,30 +124,37 @@ def get_ai_suggestions(article, rgb):
                 for line in text.strip().split("\n")
                 if line.strip()
             ]
-            return suggestions or suggest_outfits(article, rgb)
+            return suggestions or suggest_outfits(article, rgb, occasion, weather, temperature)
         except Exception as e:
             print("⚠️ ChatGPT fallback triggered:", str(e))
 
-    return suggest_outfits(article, rgb)
+    return suggest_outfits(article, rgb, occasion, weather, temperature)
 
 # Rule-based fallback suggestions
-def suggest_outfits(article, rgb):
+def suggest_outfits(article, rgb, occasion, weather, temperature):
     r, g, b = rgb
-    color = "red" if r > 180 else "neutral"
+    color_category = "red" if r > 180 else "neutral"
 
+    # Example rules (expand as needed)
     style_db = {
-        "Jacket": {
-            "red": ["Pair with black jeans and white sneakers", "Layer over a white tee"],
-            "neutral": ["Try navy chinos", "Go with a pastel shirt underneath"]
-        },
         "T-shirt": {
-            "red": ["Match with denim shorts", "Add black joggers and sneakers"],
-            "neutral": ["Go with beige pants", "Throw on a denim jacket"]
+            "casual stroll": ["Pair with joggers and slip-ons", "Add a flannel shirt for layering"],
+            "workout": ["Match with breathable shorts and trainers", "Use moisture-wicking materials"],
+            "vacation": ["Combine with cargo shorts and sunglasses", "Top off with a straw hat"],
+            "date": ["Pair with chinos and loafers", "Add a casual blazer over the tee"],
+        },
+        "Jacket": {
+            "formal": ["Wear over a dress shirt and wool trousers", "Add a tie and leather shoes"],
+            "vacation": ["Layer over a hoodie with ripped jeans", "Use with canvas sneakers"],
         },
         "Shoes": {
-            "red": ["Use with neutral pants and white shirt", "Add ankle socks and dark jeans"],
-            "neutral": ["Pair with slim trousers", "Balance with a bold top"]
+            "date": ["Pair with a sharp shirt and jeans", "Use with a leather belt to match"],
+            "workout": ["Match with gym wear", "Ensure comfort and breathability"],
         }
     }
 
-    return style_db.get(article, {}).get(color, ["Explore classic outfit pairings for this piece."])
+    article_suggestions = style_db.get(article, {})
+    return article_suggestions.get(occasion, [
+        "Explore classic outfit pairings for this piece.",
+        "Try layering and balancing colors for versatility."
+    ])
