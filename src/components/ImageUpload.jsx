@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from "react";
 
-function ImageUpload({ presetData, analyzeContext, openPreAnalyzePopup }) {
+function ImageUpload({ presetData }) {
   const [image, setImage] = useState(null);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [context, setContext] = useState({
+    occasion: "", weather: "", temperature: ""
+  });
 
   useEffect(() => {
     const mobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
@@ -16,7 +19,6 @@ function ImageUpload({ presetData, analyzeContext, openPreAnalyzePopup }) {
     if (file) {
       setImage(file);
       setResult(null);
-      openPreAnalyzePopup();
     }
   };
 
@@ -31,9 +33,9 @@ function ImageUpload({ presetData, analyzeContext, openPreAnalyzePopup }) {
     formData.append("heightFeet", presetData.heightFeet);
     formData.append("heightInches", presetData.heightInches);
     formData.append("buildType", presetData.buildType);
-    formData.append("occasion", analyzeContext.occasion);
-    formData.append("weather", analyzeContext.weather);
-    formData.append("temperature", analyzeContext.temperature); // optional
+    formData.append("occasion", context.occasion);
+    formData.append("weather", context.weather);
+    formData.append("temperature", context.temperature);
 
     try {
       const res = await fetch("https://outfitter-backend-n1hd.onrender.com/api/analyze", {
@@ -75,6 +77,30 @@ function ImageUpload({ presetData, analyzeContext, openPreAnalyzePopup }) {
             alt="preview"
             style={{ width: "100%", borderRadius: "8px" }}
           />
+          <div style={{ marginTop: "1rem" }}>
+            <h3>Context Info</h3>
+            <select onChange={e => setContext({ ...context, occasion: e.target.value })}>
+              <option value="">Occasion</option>
+              <option>Casual</option>
+              <option>Work</option>
+              <option>Formal</option>
+              <option>Party</option>
+            </select>
+            <select onChange={e => setContext({ ...context, weather: e.target.value })} style={{ marginLeft: "8px" }}>
+              <option value="">Weather</option>
+              <option>Sunny</option>
+              <option>Rainy</option>
+              <option>Cloudy</option>
+              <option>Snowy</option>
+            </select>
+            <select onChange={e => setContext({ ...context, temperature: e.target.value })} style={{ marginLeft: "8px" }}>
+              <option value="">Temperature (optional)</option>
+              <option>Hot</option>
+              <option>Warm</option>
+              <option>Cool</option>
+              <option>Freezing</option>
+            </select>
+          </div>
         </div>
       )}
 

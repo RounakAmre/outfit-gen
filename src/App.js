@@ -3,14 +3,8 @@ import ImageUpload from './components/ImageUpload';
 
 function App() {
   const [presetOpen, setPresetOpen] = useState(true);
-  const [preAnalyzeOpen, setPreAnalyzeOpen] = useState(false);
-
   const [presetData, setPresetData] = useState({
     name: '', gender: '', complexion: '', heightFeet: '', heightInches: '', buildType: ''
-  });
-
-  const [analyzeContext, setAnalyzeContext] = useState({
-    occasion: '', weather: '', temperature: ''
   });
 
   return (
@@ -47,41 +41,7 @@ function App() {
         </div>
       )}
 
-      {preAnalyzeOpen && (
-        <div className="popup">
-          <div className="popup-content">
-            <h2>Context Info</h2>
-            <select onChange={e => setAnalyzeContext({ ...analyzeContext, occasion: e.target.value })}>
-              <option value="">Occasion</option>
-              <option>Casual</option>
-              <option>Work</option>
-              <option>Formal</option>
-              <option>Party</option>
-            </select>
-            <select onChange={e => setAnalyzeContext({ ...analyzeContext, weather: e.target.value })}>
-              <option value="">Weather</option>
-              <option>Sunny</option>
-              <option>Rainy</option>
-              <option>Cloudy</option>
-              <option>Snowy</option>
-            </select>
-            <select onChange={e => setAnalyzeContext({ ...analyzeContext, temperature: e.target.value })}>
-              <option value="">Temperature (optional)</option>
-              <option>Hot</option>
-              <option>Warm</option>
-              <option>Cool</option>
-              <option>Freezing</option>
-            </select>
-            <button onClick={() => setPreAnalyzeOpen(false)}>Analyze</button>
-          </div>
-        </div>
-      )}
-
-      <ImageUpload
-        presetData={presetData}
-        analyzeContext={analyzeContext}
-        openPreAnalyzePopup={() => setPreAnalyzeOpen(true)}
-      />
+      {!presetOpen && <ImageUpload presetData={presetData} />}
     </div>
   );
 }
