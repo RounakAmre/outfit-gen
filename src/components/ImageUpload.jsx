@@ -52,27 +52,33 @@ function ImageUpload({ presetData }) {
   };
 
   return (
-    <div className="upload-container">
-      <h2>👕 Upload Your Outfit</h2>
+    <div style={{ padding: "2rem", maxWidth: "400px", margin: "auto" }}>
+      <h2>👕 Outfit Analyzer</h2>
 
-      <input
-        type="file"
-        accept="image/*"
-        capture={isMobile ? "environment" : undefined}
-        onChange={handleFileChange}
-        className="file-input"
-      />
+      {isMobile ? (
+        <input
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={handleFileChange}
+        />
+      ) : (
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleFileChange}
+        />
+      )}
 
       {image && (
-        <div className="preview-section">
+        <div style={{ marginTop: "1rem" }}>
           <img
             src={URL.createObjectURL(image)}
             alt="preview"
-            className="preview-image"
+            style={{ width: "100%", borderRadius: "8px" }}
           />
-
-          <div className="context-info">
-            <h3>📋 Context Info</h3>
+          <div style={{ marginTop: "1rem" }}>
+            <h3>Context Info</h3>
             <select onChange={e => setContext({ ...context, occasion: e.target.value })}>
               <option value="">Occasion</option>
               <option>Casual</option>
@@ -80,14 +86,14 @@ function ImageUpload({ presetData }) {
               <option>Formal</option>
               <option>Party</option>
             </select>
-            <select onChange={e => setContext({ ...context, weather: e.target.value })}>
+            <select onChange={e => setContext({ ...context, weather: e.target.value })} style={{ marginLeft: "8px" }}>
               <option value="">Weather</option>
               <option>Sunny</option>
               <option>Rainy</option>
               <option>Cloudy</option>
               <option>Snowy</option>
             </select>
-            <select onChange={e => setContext({ ...context, temperature: e.target.value })}>
+            <select onChange={e => setContext({ ...context, temperature: e.target.value })} style={{ marginLeft: "8px" }}>
               <option value="">Temperature (optional)</option>
               <option>Hot</option>
               <option>Warm</option>
@@ -98,26 +104,33 @@ function ImageUpload({ presetData }) {
         </div>
       )}
 
-      <button onClick={handleUpload} className="analyze-button">
+      <button
+        onClick={handleUpload}
+        style={{
+          marginTop: "1rem",
+          padding: "0.5rem 1rem",
+          fontSize: "16px",
+          cursor: "pointer",
+        }}
+      >
         {loading ? "Analyzing..." : "Analyze Outfit"}
       </button>
 
       {result && (
-        <div className="result-card">
+        <div style={{ marginTop: "1rem" }}>
           {result.error ? (
             <p style={{ color: "red" }}>{result.error}</p>
           ) : (
-            <>
-              <h3>🧠 Analysis Result</h3>
-              <p><strong>Detected Item:</strong> {result.article}</p>
+            <div>
+              <p><strong>Detected:</strong> {result.article}</p>
               <p><strong>Color:</strong> {result.color}</p>
-              <h4>🎨 Suggested Outfit Combinations</h4>
+              <p><strong>Outfit Suggestions (complementing your {result.article.toLowerCase()}):</strong></p>
               <ul>
                 {result.suggestions.map((s, i) => (
-                  <li key={i}>👗 {s}</li>
+                  <li key={i}>{s}</li>
                 ))}
               </ul>
-            </>
+            </div>
           )}
         </div>
       )}
