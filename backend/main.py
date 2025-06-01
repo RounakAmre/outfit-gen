@@ -99,13 +99,13 @@ async def analyze_image(
 
 def get_ai_suggestions(article, rgb, name, gender, complexion, heightFeet, heightInches, buildType, occasion, weather, temperature):
     prompt = (
-        f"User: {name}, {gender}, complexion: {complexion}, "
-        f"Height: {heightFeet} feet {heightInches} inches, Build: {buildType}.\n"
-        f"Context: Occasion: {occasion}, Weather: {weather}, Temperature: {temperature or 'not specified'}.
-"
-        f"Detected clothing item: {article}, color: rgb{rgb}.\n"
-        f"Suggest 3 stylish outfit combinations that suit the user profile and context."
-    )
+    f"User: {name}, {gender}, complexion: {complexion}, "
+    f"Height: {heightFeet} feet {heightInches} inches, Build: {buildType}.\n"
+    f"Context: Occasion: {occasion}, Weather: {weather}, Temperature: {temperature or 'not specified'}.\n"
+    f"Detected clothing item: {article}, color: rgb{rgb}.\n"
+    f"Suggest 3 stylish outfit combinations that suit the user profile and context."
+)
+
 
     if OPENAI_API_KEY:
         try:
