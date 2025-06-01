@@ -102,9 +102,11 @@ def get_ai_suggestions(article, rgb, name, gender, complexion, heightFeet, heigh
     f"User: {name}, {gender}, complexion: {complexion}, "
     f"Height: {heightFeet} feet {heightInches} inches, Build: {buildType}.\n"
     f"Context: Occasion: {occasion}, Weather: {weather}, Temperature: {temperature or 'not specified'}.\n"
-    f"Detected clothing item: {article}, color: rgb{rgb}.\n"
-    f"Suggest 3 stylish outfit combinations that suit the user profile and context."
+    f"The user is wearing a {article.lower()} in color rgb{rgb}. "
+    f"Do not suggest another {article.lower()}. "
+    f"Instead, suggest 3 stylish full outfit combinations that complement this item based on the user's profile and context."
 )
+
 
 
     if OPENAI_API_KEY:

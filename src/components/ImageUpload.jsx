@@ -98,7 +98,7 @@ function ImageUpload({ presetData, analyzeContext, openPreAnalyzePopup }) {
             <div>
               <p><strong>Detected:</strong> {result.article}</p>
               <p><strong>Color:</strong> {result.color}</p>
-              <p><strong>Suggestions:</strong></p>
+              <p><strong>Outfit Suggestions (complementing your {result.article.toLowerCase()}):</strong></p>
               <ul>
                 {result.suggestions.map((s, i) => (
                   <li key={i}>{s}</li>
