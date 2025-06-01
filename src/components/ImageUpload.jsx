@@ -1,83 +1,111 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
-function ImageUpload() {
+function ImageUpload({ presetData, analyzeContext, openPreAnalyzePopup }) {
   const [image, setImage] = useState(null);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
-  const [occasion, setOccasion] = useState("");
-  const [weather, setWeather] = useState("");
-  const [temperature, setTemperature] = useState("");
+  useEffect(() => {
+    const mobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+    setIsMobile(mobile);
+  }, []);
 
-  const handleImageChange = (e) => {
-    setImage(e.target.files[0]);
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setImage(file);
+      setResult(null);
+      openPreAnalyzePopup();
+    }
   };
 
-  const handleAnalyze = async () => {
-    if (!image || !occasion || !weather || !temperature) {
-      alert("Please select image and fill all fields.");
-      return;
-    }
-
+  const handleUpload = async () => {
+    if (!image) return;
     setLoading(true);
     const formData = new FormData();
     formData.append("image", image);
-    formData.append("occasion", occasion);
-    formData.append("weather", weather);
-    formData.append("temperature", temperature);
+    formData.append("name", presetData.name);
+    formData.append("gender", presetData.gender);
+    formData.append("complexion", presetData.complexion);
+    formData.append("heightFeet", presetData.heightFeet);
+    formData.append("heightInches", presetData.heightInches);
+    formData.append("buildType", presetData.buildType);
+    formData.append("occasion", analyzeContext.occasion);
+    formData.append("weather", analyzeContext.weather);
+    formData.append("temperature", analyzeContext.temperature); // optional
 
-    const response = await fetch("http://localhost:8000/api/analyze", {
-      method: "POST",
-      body: formData,
-    });
-
-    const data = await response.json();
-    setResult(data);
-    setLoading(false);
+    try {
+      const res = await fetch("https://outfitter-backend-n1hd.onrender.com/api/analyze", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      setResult(data);
+    } catch (error) {
+      setResult({ error: "Failed to connect to the backend." });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div>
-      <h2>Upload Clothing Image</h2>
-      <input type="file" onChange={handleImageChange} />
-      <div>
-        <label>Occasion:</label>
-        <select onChange={(e) => setOccasion(e.target.value)} defaultValue="">
-          <option value="" disabled>Select Occasion</option>
-          <option value="date">Date</option>
-          <option value="workout">Workout</option>
-          <option value="casual stroll">Casual Stroll</option>
-          <option value="vacation">Vacation</option>
-          <option value="formal">Formal</option>
-        </select>
-      </div>
-      <div>
-        <label>Weather:</label>
-        <select onChange={(e) => setWeather(e.target.value)} defaultValue="">
-          <option value="" disabled>Select Weather</option>
-          <option value="sunny">Sunny</option>
-          <option value="cloudy">Cloudy</option>
-          <option value="rainy">Rainy</option>
-          <option value="snowy">Snowy</option>
-        </select>
-      </div>
-      <div>
-        <label>Temperature (°F):</label>
-        <input type="number" onChange={(e) => setTemperature(e.target.value)} />
-      </div>
-      <button onClick={handleAnalyze}>Analyze</button>
+    <div style={{ padding: "2rem", maxWidth: "400px", margin: "auto" }}>
+      <h2>👕 Outfit Analyzer</h2>
 
-      {loading && <p>Analyzing...</p>}
+      {isMobile ? (
+        <input
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={handleFileChange}
+        />
+      ) : (
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleFileChange}
+        />
+      )}
+
+      {image && (
+        <div style={{ marginTop: "1rem" }}>
+          <img
+            src={URL.createObjectURL(image)}
+            alt="preview"
+            style={{ width: "100%", borderRadius: "8px" }}
+          />
+        </div>
+      )}
+
+      <button
+        onClick={handleUpload}
+        style={{
+          marginTop: "1rem",
+          padding: "0.5rem 1rem",
+          fontSize: "16px",
+          cursor: "pointer",
+        }}
+      >
+        {loading ? "Analyzing..." : "Analyze Outfit"}
+      </button>
+
       {result && (
-        <div>
-          <h3>Results</h3>
-          <p><strong>Detected:</strong> {result.article}</p>
-          <p><strong>Color:</strong> {result.color}</p>
-          <ul>
-            {result.suggestions && result.suggestions.map((s, i) => (
-              <li key={i}>{s}</li>
-            ))}
-          </ul>
+        <div style={{ marginTop: "1rem" }}>
+          {result.error ? (
+            <p style={{ color: "red" }}>{result.error}</p>
+          ) : (
+            <div>
+              <p><strong>Detected:</strong> {result.article}</p>
+              <p><strong>Color:</strong> {result.color}</p>
+              <p><strong>Suggestions:</strong></p>
+              <ul>
+                {result.suggestions.map((s, i) => (
+                  <li key={i}>{s}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
     </div>

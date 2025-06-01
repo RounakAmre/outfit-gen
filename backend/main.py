@@ -17,7 +17,7 @@ app = FastAPI()
 # Enable CORS for frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Update with frontend domain in production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -37,9 +37,15 @@ label_map = {
 @app.post("/api/analyze")
 async def analyze_image(
     image: UploadFile = File(...),
+    name: str = Form(...),
+    gender: str = Form(...),
+    complexion: str = Form(...),
+    heightFeet: str = Form(...),
+    heightInches: str = Form(...),
+    buildType: str = Form(...),
     occasion: str = Form(...),
     weather: str = Form(...),
-    temperature: str = Form(...)
+    temperature: str = Form(None)
 ):
     content = await image.read()
     vision_image = vision.Image(content=content)
@@ -51,10 +57,6 @@ async def analyze_image(
         'Clothing', 'Coat', 'Hoodie', 'Sweater', 'Shorts', 'Skirt',
         'Shoe', 'Shoes', 'Footwear', 'Blazer', 'Apparel', 'Top'
     ]
-
-    print("Detected objects:")
-    for obj in objects:
-        print(f"- {obj.name} ({obj.score:.2f})")
 
     clothing_obj = next((obj for obj in objects if obj.name in clothing_labels), None)
     if not clothing_obj:
@@ -87,7 +89,7 @@ async def analyze_image(
     rgb_str = f"rgb({rgb[0]}, {rgb[1]}, {rgb[2]})"
 
     # Step 4: AI outfit suggestions
-    suggestions = get_ai_suggestions(article, rgb, occasion, weather, temperature)
+    suggestions = get_ai_suggestions(article, rgb, name, gender, complexion, heightFeet, heightInches, buildType, occasion, weather, temperature)
 
     return {
         "article": article,
@@ -95,11 +97,14 @@ async def analyze_image(
         "suggestions": suggestions
     }
 
-def get_ai_suggestions(article, rgb, occasion, weather, temperature):
+def get_ai_suggestions(article, rgb, name, gender, complexion, heightFeet, heightInches, buildType, occasion, weather, temperature):
     prompt = (
-        f"Suggest 3 stylish and practical outfits featuring a {article.lower()} of color rgb{rgb}. "
-        f"The user will wear it for a '{occasion}' in '{weather}' weather around {temperature}°F. "
-        f"Give complete outfits that match the scenario, and ensure the styles are wearable and trendy."
+        f"User: {name}, {gender}, complexion: {complexion}, "
+        f"Height: {heightFeet} feet {heightInches} inches, Build: {buildType}.\n"
+        f"Context: Occasion: {occasion}, Weather: {weather}, Temperature: {temperature or 'not specified'}.
+"
+        f"Detected clothing item: {article}, color: rgb{rgb}.\n"
+        f"Suggest 3 stylish outfit combinations that suit the user profile and context."
     )
 
     if OPENAI_API_KEY:
@@ -124,37 +129,30 @@ def get_ai_suggestions(article, rgb, occasion, weather, temperature):
                 for line in text.strip().split("\n")
                 if line.strip()
             ]
-            return suggestions or suggest_outfits(article, rgb, occasion, weather, temperature)
+            return suggestions or suggest_outfits(article, rgb)
         except Exception as e:
             print("⚠️ ChatGPT fallback triggered:", str(e))
 
-    return suggest_outfits(article, rgb, occasion, weather, temperature)
+    return suggest_outfits(article, rgb)
 
 # Rule-based fallback suggestions
-def suggest_outfits(article, rgb, occasion, weather, temperature):
+def suggest_outfits(article, rgb):
     r, g, b = rgb
-    color_category = "red" if r > 180 else "neutral"
+    color = "red" if r > 180 else "neutral"
 
-    # Example rules (expand as needed)
     style_db = {
-        "T-shirt": {
-            "casual stroll": ["Pair with joggers and slip-ons", "Add a flannel shirt for layering"],
-            "workout": ["Match with breathable shorts and trainers", "Use moisture-wicking materials"],
-            "vacation": ["Combine with cargo shorts and sunglasses", "Top off with a straw hat"],
-            "date": ["Pair with chinos and loafers", "Add a casual blazer over the tee"],
-        },
         "Jacket": {
-            "formal": ["Wear over a dress shirt and wool trousers", "Add a tie and leather shoes"],
-            "vacation": ["Layer over a hoodie with ripped jeans", "Use with canvas sneakers"],
+            "red": ["Pair with black jeans and white sneakers", "Layer over a white tee"],
+            "neutral": ["Try navy chinos", "Go with a pastel shirt underneath"]
+        },
+        "T-shirt": {
+            "red": ["Match with denim shorts", "Add black joggers and sneakers"],
+            "neutral": ["Go with beige pants", "Throw on a denim jacket"]
         },
         "Shoes": {
-            "date": ["Pair with a sharp shirt and jeans", "Use with a leather belt to match"],
-            "workout": ["Match with gym wear", "Ensure comfort and breathability"],
+            "red": ["Use with neutral pants and white shirt", "Add ankle socks and dark jeans"],
+            "neutral": ["Pair with slim trousers", "Balance with a bold top"]
         }
     }
 
-    article_suggestions = style_db.get(article, {})
-    return article_suggestions.get(occasion, [
-        "Explore classic outfit pairings for this piece.",
-        "Try layering and balancing colors for versatility."
-    ])
+    return style_db.get(article, {}).get(color, ["Explore classic outfit pairings for this piece."])
