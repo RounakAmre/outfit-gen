@@ -1,5 +1,6 @@
 .App {
   text-align: center;
+  font-family: Arial, sans-serif;
 }
 
 .App-logo {
@@ -36,3 +37,45 @@
     transform: rotate(360deg);
   }
 }
+
+/* ----------------------------- */
+/* 👇 Additional styling for form */
+
+.popup {
+  max-width: 420px;
+  margin: 2rem auto;
+  padding: 1.5rem;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  background-color: #f9f9f9;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  text-align: left;
+}
+
+.popup h2 {
+  margin-bottom: 1rem;
+}
+
+.popup input,
+.popup select {
+  display: block;
+  width: 100%;
+  padding: 0.5rem;
+  font-size: 1rem;
+  margin-bottom: 0.75rem;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+.popup button {
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  cursor: pointer;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  width: 100%;
+}
+
+/* -------------------------------- */
