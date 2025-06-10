@@ -26,13 +26,19 @@ app.add_middleware(
 # Google Vision client
 client = vision.ImageAnnotatorClient()
 
-# Normalize vague labels to standard terms
+# Label mapping
 label_map = {
     "Top": "T-shirt",
     "Footwear": "Shoes",
     "Clothing": "Outfit",
     "Apparel": "Outfit"
 }
+
+clothing_labels = [
+    'Jacket', 'Shirt', 'T-shirt', 'Pants', 'Jeans', 'Dress',
+    'Clothing', 'Coat', 'Hoodie', 'Sweater', 'Shorts', 'Skirt',
+    'Shoe', 'Shoes', 'Footwear', 'Blazer', 'Apparel', 'Top'
+]
 
 @app.post("/api/analyze")
 async def analyze_image(
@@ -48,39 +54,53 @@ async def analyze_image(
     temperature: str = Form(None)
 ):
     content = await image.read()
-    vision_image = vision.Image(content=content)
 
-    # Step 1: Detect clothing objects
-    objects = client.object_localization(image=vision_image).localized_object_annotations
-    clothing_labels = [
-        'Jacket', 'Shirt', 'T-shirt', 'Pants', 'Jeans', 'Dress',
-        'Clothing', 'Coat', 'Hoodie', 'Sweater', 'Shorts', 'Skirt',
-        'Shoe', 'Shoes', 'Footwear', 'Blazer', 'Apparel', 'Top'
-    ]
-
-    clothing_obj = next((obj for obj in objects if obj.name in clothing_labels), None)
-    if not clothing_obj:
-        return {"error": "No recognizable clothing item found."}
-
-    article_raw = clothing_obj.name
-    article = label_map.get(article_raw, article_raw)
-
-    # Step 2: Crop bounding box
-    box = clothing_obj.bounding_poly.normalized_vertices
+    # Preprocess image with OpenCV
     npimg = np.frombuffer(content, np.uint8)
     img = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
+    if img is None:
+        return {"error": "Could not decode image."}
+
+    # Enhance image
+    img = cv2.convertScaleAbs(img, alpha=1.2, beta=20)  # Brightness and contrast boost
     h, w = img.shape[:2]
 
-    x1, y1 = int(box[0].x * w), int(box[0].y * h)
-    x2, y2 = int(box[2].x * w), int(box[2].y * h)
-    cropped = img[y1:y2, x1:x2]
+    _, buffer = cv2.imencode('.jpg', img)
+    enhanced_bytes = buffer.tobytes()
+    vision_image = vision.Image(content=enhanced_bytes)
 
-    _, buffer = cv2.imencode('.jpg', cropped)
-    cropped_bytes = buffer.tobytes()
-    cropped_vision_img = vision.Image(content=cropped_bytes)
+    # Try object localization
+    objects = client.object_localization(image=vision_image).localized_object_annotations
+    clothing_obj = next((obj for obj in objects if obj.name in clothing_labels), None)
+
+    if clothing_obj:
+        # Step 1: Get clothing article
+        article_raw = clothing_obj.name
+        article = label_map.get(article_raw, article_raw)
+
+        # Step 2: Crop bounding box
+        box = clothing_obj.bounding_poly.normalized_vertices
+        x1, y1 = int(box[0].x * w), int(box[0].y * h)
+        x2, y2 = int(box[2].x * w), int(box[2].y * h)
+        cropped = img[y1:y2, x1:x2]
+
+    else:
+        # Fallback: Try label detection
+        label_response = client.label_detection(image=vision_image)
+        labels = [label.description for label in label_response.label_annotations if label.description in clothing_labels]
+
+        if not labels:
+            return {"error": "No recognizable clothing item found."}
+
+        article_raw = labels[0]
+        article = label_map.get(article_raw, article_raw)
+        cropped = img  # Use whole image
 
     # Step 3: Extract color
-    color_resp = client.image_properties(image=cropped_vision_img)
+    _, cropped_buf = cv2.imencode('.jpg', cropped)
+    cropped_bytes = cropped_buf.tobytes()
+    color_resp = client.image_properties(image=vision.Image(content=cropped_bytes))
+
     if not color_resp.image_properties_annotation.dominant_colors.colors:
         return {"error": "Could not extract color."}
 
@@ -88,7 +108,7 @@ async def analyze_image(
     rgb = (int(color.red), int(color.green), int(color.blue))
     rgb_str = f"rgb({rgb[0]}, {rgb[1]}, {rgb[2]})"
 
-    # Step 4: AI outfit suggestions
+    # Step 4: Get outfit suggestions
     suggestions = get_ai_suggestions(article, rgb, name, gender, complexion, heightFeet, heightInches, buildType, occasion, weather, temperature)
 
     return {
@@ -99,15 +119,13 @@ async def analyze_image(
 
 def get_ai_suggestions(article, rgb, name, gender, complexion, heightFeet, heightInches, buildType, occasion, weather, temperature):
     prompt = (
-    f"User: {name}, {gender}, complexion: {complexion}, "
-    f"Height: {heightFeet} feet {heightInches} inches, Build: {buildType}.\n"
-    f"Context: Occasion: {occasion}, Weather: {weather}, Temperature: {temperature or 'not specified'}.\n"
-    f"The user is wearing a {article.lower()} in color rgb{rgb}. "
-    f"Do not suggest another {article.lower()}. "
-    f"Instead, suggest 3 stylish full outfit combinations that complement this item based on the user's profile and context."
-)
-
-
+        f"User: {name}, {gender}, complexion: {complexion}, "
+        f"Height: {heightFeet} feet {heightInches} inches, Build: {buildType}.\n"
+        f"Context: Occasion: {occasion}, Weather: {weather}, Temperature: {temperature or 'not specified'}.\n"
+        f"The user is wearing a {article.lower()} in color rgb{rgb}. "
+        f"Do not suggest another {article.lower()}. "
+        f"Instead, suggest 3 stylish full outfit combinations that complement this item based on the user's profile and context."
+    )
 
     if OPENAI_API_KEY:
         try:
@@ -137,7 +155,7 @@ def get_ai_suggestions(article, rgb, name, gender, complexion, heightFeet, heigh
 
     return suggest_outfits(article, rgb)
 
-# Rule-based fallback suggestions
+# Simple rule-based fallback
 def suggest_outfits(article, rgb):
     r, g, b = rgb
     color = "red" if r > 180 else "neutral"
