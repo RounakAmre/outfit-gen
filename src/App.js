@@ -34,8 +34,6 @@ function App() {
 
 export default App;
 
-// components/UserForm.jsx
-import React, { useState } from 'react';
 
 const UserForm = ({ onSubmit }) => {
   const [step, setStep] = useState(1);
