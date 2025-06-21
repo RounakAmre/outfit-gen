@@ -193,7 +193,9 @@ function App() {
             <p style={{ color: "red" }}>{result.error}</p>
           ) : (
             <div>
-              <p><strong>Detected:</strong> {result.summary}</p>
+              {result.summary && (
+                <p><strong>Detected:</strong> {result.summary}</p>
+              )}
               <p><strong>Suggestions:</strong></p>
               <ul>
                 {result.suggestions.map((s, i) => (
