@@ -1,42 +1,56 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 function App() {
   const [image, setImage] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
-  const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
-  const [customPrompt, setCustomPrompt] = useState("");
-  const [isMobile, setIsMobile] = useState(
-    /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)
-  );
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [formData, setFormData] = useState({
+  const [loading, setLoading] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [showOptional, setShowOptional] = useState(false);
+  const [prompt, setPrompt] = useState("");
+
+  const [optionalFields, setOptionalFields] = useState({
     heightFeet: "",
     heightInches: "",
     buildType: "",
     complexion: "",
-    weather: "",
     occasion: "",
+    weather: "",
+    temperature: ""
   });
+
+  useEffect(() => {
+    const mobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+    setIsMobile(mobile);
+  }, []);
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setImage(file);
+      setPreviewUrl(URL.createObjectURL(file));
+      setResult(null);
+    }
+  };
 
   const handleUpload = async () => {
     if (!image) return;
     setLoading(true);
-    const data = new FormData();
-    data.append("image", image);
-    data.append("customPrompt", customPrompt);
-    Object.entries(formData).forEach(([k, v]) =>
-      data.append(k, v || "")
+    const formData = new FormData();
+    formData.append("image", image);
+    formData.append("prompt", prompt);
+    Object.entries(optionalFields).forEach(([key, value]) =>
+      formData.append(key, value)
     );
 
     try {
       const res = await fetch("https://outfitter-backend-n1hd.onrender.com/api/analyze", {
         method: "POST",
-        body: data,
+        body: formData,
       });
-      const json = await res.json();
-      setResult(json);
-    } catch (err) {
+      const data = await res.json();
+      setResult(data);
+    } catch (error) {
       setResult({ error: "Failed to connect to the backend." });
     } finally {
       setLoading(false);
@@ -44,22 +58,15 @@ function App() {
   };
 
   return (
-    <div style={{ maxWidth: "400px", margin: "auto", padding: "1rem", fontFamily: "sans-serif" }}>
-      <h2 style={{ textAlign: "center" }}>👕 Outfit Analyzer</h2>
+    <div style={{ fontFamily: "Arial", maxWidth: "420px", margin: "2rem auto", padding: "1rem" }}>
+      <h2 style={{ textAlign: "center" }}>🧥 Outfit Analyzer</h2>
 
       <input
         type="file"
         accept="image/*"
         capture={isMobile ? "environment" : undefined}
-        onChange={(e) => {
-          const file = e.target.files[0];
-          if (file) {
-            setImage(file);
-            setPreviewUrl(URL.createObjectURL(file));
-            setResult(null);
-          }
-        }}
-        style={{ margin: "1rem 0", width: "100%" }}
+        onChange={handleFileChange}
+        style={{ marginBottom: "1rem", width: "100%" }}
       />
 
       {previewUrl && (
@@ -69,7 +76,7 @@ function App() {
           style={{
             width: "100%",
             borderRadius: "8px",
-            marginTop: "1rem",
+            marginBottom: "1rem",
             boxShadow: "0 0 6px rgba(0,0,0,0.1)"
           }}
         />
@@ -77,110 +84,103 @@ function App() {
 
       <textarea
         placeholder="Optional: Describe your style goal..."
-        value={customPrompt}
-        onChange={(e) => setCustomPrompt(e.target.value)}
-        style={{
-          width: "100%",
-          minHeight: "60px",
-          marginTop: "1rem",
-          padding: "0.5rem",
-          border: "1px solid #ccc",
-          borderRadius: "6px",
-        }}
+        value={prompt}
+        onChange={(e) => setPrompt(e.target.value)}
+        rows={3}
+        style={{ width: "100%", marginBottom: "1rem", padding: "0.5rem" }}
       />
 
       <button
-        onClick={() => setShowAdvanced((prev) => !prev)}
+        onClick={() => setShowOptional(!showOptional)}
         style={{
-          marginTop: "1rem",
-          backgroundColor: "#eee",
-          padding: "0.5rem",
           width: "100%",
+          padding: "0.6rem",
+          backgroundColor: "#eee",
           border: "1px solid #ccc",
-          borderRadius: "6px",
+          borderRadius: "5px",
+          marginBottom: "1rem",
+          cursor: "pointer"
         }}
       >
-        {showAdvanced ? "Hide Optional Fields ▲" : "Add Optional Fields ▼"}
+        {showOptional ? "Hide Optional Fields ▲" : "Add Optional Fields ▼"}
       </button>
 
-      {showAdvanced && (
-        <div style={{ marginTop: "1rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-          <label><strong>Height</strong></label>
-          <div style={{ display: "flex", gap: "0.5rem" }}>
-            <input
-              type="number"
-              placeholder="Feet"
-              value={formData.heightFeet}
-              onChange={(e) => setFormData({ ...formData, heightFeet: e.target.value })}
-              style={{ flex: 1 }}
-            />
-            <input
-              type="number"
-              placeholder="Inches"
-              value={formData.heightInches}
-              onChange={(e) => setFormData({ ...formData, heightInches: e.target.value })}
-              style={{ flex: 1 }}
-            />
+      {showOptional && (
+        <div style={{ marginBottom: "1rem" }}>
+          <label>Height:</label>
+          <div style={{ display: "flex", gap: "8px", marginBottom: "0.5rem" }}>
+            <select onChange={e => setOptionalFields({ ...optionalFields, heightFeet: e.target.value })}>
+              <option value="">Feet</option>
+              {[...Array(8)].map((_, i) => (
+                <option key={i}>{i + 4}</option>
+              ))}
+            </select>
+            <select onChange={e => setOptionalFields({ ...optionalFields, heightInches: e.target.value })}>
+              <option value="">Inches</option>
+              {[...Array(12)].map((_, i) => (
+                <option key={i}>{i}</option>
+              ))}
+            </select>
           </div>
 
-          <select
-            value={formData.buildType}
-            onChange={(e) => setFormData({ ...formData, buildType: e.target.value })}
-          >
-            <option value="">Build Type</option>
+          <label>Build Type:</label>
+          <select onChange={e => setOptionalFields({ ...optionalFields, buildType: e.target.value })}>
+            <option value="">Select</option>
             <option>Slim</option>
             <option>Athletic</option>
             <option>Average</option>
             <option>Heavyset</option>
           </select>
 
-          <select
-            value={formData.complexion}
-            onChange={(e) => setFormData({ ...formData, complexion: e.target.value })}
-          >
-            <option value="">Complexion</option>
+          <label style={{ marginTop: "0.5rem", display: "block" }}>Complexion:</label>
+          <select onChange={e => setOptionalFields({ ...optionalFields, complexion: e.target.value })}>
+            <option value="">Select</option>
             <option>Fair</option>
             <option>Medium</option>
             <option>Olive</option>
             <option>Dark</option>
           </select>
 
-          <label><strong>Context</strong></label>
-          <select
-            value={formData.occasion}
-            onChange={(e) => setFormData({ ...formData, occasion: e.target.value })}
-          >
-            <option value="">Occasion</option>
-            <option>Work</option>
+          <label style={{ marginTop: "0.5rem", display: "block" }}>Occasion:</label>
+          <select onChange={e => setOptionalFields({ ...optionalFields, occasion: e.target.value })}>
+            <option value="">Select</option>
             <option>Casual</option>
+            <option>Work</option>
             <option>Date</option>
             <option>Party</option>
           </select>
 
-          <select
-            value={formData.weather}
-            onChange={(e) => setFormData({ ...formData, weather: e.target.value })}
-          >
-            <option value="">Weather</option>
+          <label style={{ marginTop: "0.5rem", display: "block" }}>Weather:</label>
+          <select onChange={e => setOptionalFields({ ...optionalFields, weather: e.target.value })}>
+            <option value="">Select</option>
             <option>Sunny</option>
             <option>Rainy</option>
             <option>Cloudy</option>
             <option>Snowy</option>
+          </select>
+
+          <label style={{ marginTop: "0.5rem", display: "block" }}>Temperature:</label>
+          <select onChange={e => setOptionalFields({ ...optionalFields, temperature: e.target.value })}>
+            <option value="">Select</option>
+            <option>Hot</option>
+            <option>Warm</option>
+            <option>Cool</option>
+            <option>Freezing</option>
           </select>
         </div>
       )}
 
       <button
         onClick={handleUpload}
+        disabled={loading}
         style={{
-          marginTop: "1.5rem",
-          backgroundColor: "#4CAF50",
-          color: "white",
-          border: "none",
-          padding: "0.75rem",
           width: "100%",
-          borderRadius: "6px",
-          fontWeight: "bold",
+          padding: "0.75rem",
+          fontSize: "1rem",
+          backgroundColor: "#4CAF50",
+          color: "#fff",
+          border: "none",
+          borderRadius: "5px",
           cursor: "pointer"
         }}
       >
@@ -188,20 +188,19 @@ function App() {
       </button>
 
       {result && (
-        <div style={{ marginTop: "1.5rem" }}>
+        <div style={{ marginTop: "1rem" }}>
           {result.error ? (
             <p style={{ color: "red" }}>{result.error}</p>
           ) : (
-            <>
-              <p><strong>Detected:</strong> {result.article}</p>
-              <p><strong>Color:</strong> {result.color}</p>
+            <div>
+              <p><strong>Detected:</strong> {result.summary}</p>
               <p><strong>Suggestions:</strong></p>
               <ul>
                 {result.suggestions.map((s, i) => (
                   <li key={i}>{s}</li>
                 ))}
               </ul>
-            </>
+            </div>
           )}
         </div>
       )}
