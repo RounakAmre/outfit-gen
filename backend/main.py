@@ -42,19 +42,18 @@ clothing_labels = [
 @app.post("/api/analyze")
 async def analyze_image(
     image: UploadFile = File(...),
-    name: str = Form(...),
-    gender: str = Form(...),
-    complexion: str = Form(...),
-    heightFeet: str = Form(...),
-    heightInches: str = Form(...),
-    buildType: str = Form(...),
-    occasion: str = Form(...),
-    weather: str = Form(...),
-    temperature: str = Form(None)
+    customPrompt: str = Form(""),
+    heightFeet: str = Form(""),
+    heightInches: str = Form(""),
+    buildType: str = Form(""),
+    complexion: str = Form(""),
+    occasion: str = Form(""),
+    weather: str = Form(""),
+    temperature: str = Form("")
 ):
     content = await image.read()
 
-    # Preprocess image with OpenCV
+    # Preprocess image using OpenCV
     npimg = np.frombuffer(content, np.uint8)
     img = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
     if img is None:
@@ -62,43 +61,38 @@ async def analyze_image(
 
     img = cv2.convertScaleAbs(img, alpha=1.2, beta=20)
     h, w = img.shape[:2]
-
     _, buffer = cv2.imencode('.jpg', img)
     enhanced_bytes = buffer.tobytes()
     vision_image = vision.Image(content=enhanced_bytes)
 
-    # Try object localization
+    # Detect objects
     objects = client.object_localization(image=vision_image).localized_object_annotations
     clothing_obj = next((obj for obj in objects if obj.name.lower() in clothing_labels), None)
 
     if clothing_obj:
         article_raw = clothing_obj.name
         article = label_map.get(article_raw, article_raw)
-
         box = clothing_obj.bounding_poly.normalized_vertices
         x1, y1 = int(box[0].x * w), int(box[0].y * h)
         x2, y2 = int(box[2].x * w), int(box[2].y * h)
         cropped = img[y1:y2, x1:x2]
-
     else:
-        # Improved fallback using label detection with score filtering
-        label_response = client.label_detection(image=vision_image)
-        labels = label_response.label_annotations
-
+        # Fallback using label detection
+        label_resp = client.label_detection(image=vision_image)
+        labels = label_resp.label_annotations
         detected_labels = [
             label.description for label in labels
             if any(cloth in label.description.lower() for cloth in clothing_labels)
             and label.score > 0.6
         ]
-
         if not detected_labels:
             return {"error": "No recognizable clothing item found."}
 
         article_raw = detected_labels[0]
         article = label_map.get(article_raw, article_raw)
-        cropped = img  # fallback uses full image
+        cropped = img  # use full image
 
-    # Extract color
+    # Extract dominant color
     _, cropped_buf = cv2.imencode('.jpg', cropped)
     cropped_bytes = cropped_buf.tobytes()
     color_resp = client.image_properties(image=vision.Image(content=cropped_bytes))
@@ -110,7 +104,11 @@ async def analyze_image(
     rgb = (int(color.red), int(color.green), int(color.blue))
     rgb_str = f"rgb({rgb[0]}, {rgb[1]}, {rgb[2]})"
 
-    suggestions = get_ai_suggestions(article, rgb, name, gender, complexion, heightFeet, heightInches, buildType, occasion, weather, temperature)
+    suggestions = get_ai_suggestions(
+        article, rgb, customPrompt,
+        heightFeet, heightInches, buildType,
+        complexion, occasion, weather, temperature
+    )
 
     return {
         "article": article,
@@ -118,14 +116,32 @@ async def analyze_image(
         "suggestions": suggestions
     }
 
-def get_ai_suggestions(article, rgb, name, gender, complexion, heightFeet, heightInches, buildType, occasion, weather, temperature):
+def get_ai_suggestions(article, rgb, customPrompt,
+                       heightFeet, heightInches, buildType,
+                       complexion, occasion, weather, temperature):
+    user_profile = []
+    if heightFeet or heightInches:
+        user_profile.append(f"Height: {heightFeet}ft {heightInches}in")
+    if buildType:
+        user_profile.append(f"Build: {buildType}")
+    if complexion:
+        user_profile.append(f"Complexion: {complexion}")
+
+    context = []
+    if occasion:
+        context.append(f"Occasion: {occasion}")
+    if weather:
+        context.append(f"Weather: {weather}")
+    if temperature:
+        context.append(f"Temperature: {temperature}")
+
     prompt = (
-        f"User: {name}, {gender}, complexion: {complexion}, "
-        f"Height: {heightFeet} feet {heightInches} inches, Build: {buildType}.\n"
-        f"Context: Occasion: {occasion}, Weather: {weather}, Temperature: {temperature or 'not specified'}.\n"
         f"The user is wearing a {article.lower()} in color rgb{rgb}. "
+        f"{'User profile: ' + ', '.join(user_profile) + '.' if user_profile else ''} "
+        f"{'Context: ' + ', '.join(context) + '.' if context else ''} "
+        f"{'Extra guidance: ' + customPrompt if customPrompt else ''} "
         f"Do not suggest another {article.lower()}. "
-        f"Instead, suggest 3 stylish full outfit combinations that complement this item based on the user's profile and context."
+        f"Suggest 3 stylish outfit combinations that complement this piece."
     )
 
     if OPENAI_API_KEY:
@@ -152,7 +168,7 @@ def get_ai_suggestions(article, rgb, name, gender, complexion, heightFeet, heigh
             ]
             return suggestions or suggest_outfits(article, rgb)
         except Exception as e:
-            print("⚠️ ChatGPT fallback triggered:", str(e))
+            print("⚠️ OpenAI fallback triggered:", str(e))
 
     return suggest_outfits(article, rgb)
 
@@ -160,7 +176,7 @@ def suggest_outfits(article, rgb):
     r, g, b = rgb
     color = "red" if r > 180 else "neutral"
 
-    style_db = {
+    fallback = {
         "Jacket": {
             "red": ["Pair with black jeans and white sneakers", "Layer over a white tee"],
             "neutral": ["Try navy chinos", "Go with a pastel shirt underneath"]
@@ -175,4 +191,8 @@ def suggest_outfits(article, rgb):
         }
     }
 
-    return style_db.get(article, {}).get(color, ["Explore classic outfit pairings for this piece."])
+    return fallback.get(article, {}).get(color, [
+        "Try matching with well-fitted complementary pieces",
+        "Add layers and accessories based on the season",
+        "Use contrast or texture to highlight the look"
+    ])
