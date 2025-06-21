@@ -2,6 +2,7 @@ import React, { useState } from "react";
 
 function App() {
   const [image, setImage] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [customPrompt, setCustomPrompt] = useState("");
@@ -29,7 +30,7 @@ function App() {
     );
 
     try {
-      const res = await fetch("https://outfitter-backend-n1hd.onrender.com/api/analyze", {
+      const res = await fetch("http://127.0.0.1:8000/api/analyze", {
         method: "POST",
         body: data,
       });
@@ -50,9 +51,29 @@ function App() {
         type="file"
         accept="image/*"
         capture={isMobile ? "environment" : undefined}
-        onChange={(e) => setImage(e.target.files[0])}
+        onChange={(e) => {
+          const file = e.target.files[0];
+          if (file) {
+            setImage(file);
+            setPreviewUrl(URL.createObjectURL(file));
+            setResult(null);
+          }
+        }}
         style={{ margin: "1rem 0", width: "100%" }}
       />
+
+      {previewUrl && (
+        <img
+          src={previewUrl}
+          alt="Uploaded preview"
+          style={{
+            width: "100%",
+            borderRadius: "8px",
+            marginTop: "1rem",
+            boxShadow: "0 0 6px rgba(0,0,0,0.1)"
+          }}
+        />
+      )}
 
       <textarea
         placeholder="Optional: Describe your style goal..."
@@ -61,6 +82,7 @@ function App() {
         style={{
           width: "100%",
           minHeight: "60px",
+          marginTop: "1rem",
           padding: "0.5rem",
           border: "1px solid #ccc",
           borderRadius: "6px",
