@@ -196,6 +196,9 @@ function App() {
               {result.summary && (
                 <p><strong>Detected:</strong> {result.summary}</p>
               )}
+              {result.color && (
+                <p><strong>Color (RGB):</strong> {result.color}</p>
+              )}
               <p><strong>Suggestions:</strong></p>
               <ul>
                 {result.suggestions.map((s, i) => (
