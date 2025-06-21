@@ -30,7 +30,7 @@ function App() {
     );
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/analyze", {
+      const res = await fetch("https://outfitter-backend-n1hd.onrender.com/api/analyze", {
         method: "POST",
         body: data,
       });
