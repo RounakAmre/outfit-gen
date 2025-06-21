@@ -8,11 +8,13 @@ import os
 import requests
 from dotenv import load_dotenv
 
+# Load environment variables from .env
 load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 app = FastAPI()
 
+# Enable CORS for frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -21,6 +23,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Google Vision client
 client = vision.ImageAnnotatorClient()
 
 label_map = {
@@ -30,10 +33,16 @@ label_map = {
     "Apparel": "Outfit"
 }
 
+clothing_labels = [
+    'jacket', 'shirt', 't-shirt', 'pants', 'jeans', 'dress',
+    'clothing', 'coat', 'hoodie', 'sweater', 'shorts', 'skirt',
+    'shoe', 'shoes', 'footwear', 'blazer', 'apparel', 'top'
+]
+
 @app.post("/api/analyze")
 async def analyze_image(
     image: UploadFile = File(...),
-    prompt: str = Form(""),
+    customPrompt: str = Form(""),
     heightFeet: str = Form(""),
     heightInches: str = Form(""),
     buildType: str = Form(""),
@@ -43,66 +52,96 @@ async def analyze_image(
     temperature: str = Form("")
 ):
     content = await image.read()
-    vision_image = vision.Image(content=content)
 
-    objects = client.object_localization(image=vision_image).localized_object_annotations
-    clothing_labels = [
-        'Jacket', 'Shirt', 'T-shirt', 'Pants', 'Jeans', 'Dress',
-        'Clothing', 'Coat', 'Hoodie', 'Sweater', 'Shorts', 'Skirt',
-        'Shoe', 'Shoes', 'Footwear', 'Blazer', 'Apparel', 'Top'
-    ]
-
-    clothing_obj = next((obj for obj in objects if obj.name in clothing_labels), None)
-    if not clothing_obj:
-        return {"error": "No recognizable clothing item found."}
-
-    article_raw = clothing_obj.name
-    article = label_map.get(article_raw, article_raw)
-
-    box = clothing_obj.bounding_poly.normalized_vertices
+    # Preprocess image using OpenCV
     npimg = np.frombuffer(content, np.uint8)
     img = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
+    if img is None:
+        return {"error": "Could not decode image."}
+
+    img = cv2.convertScaleAbs(img, alpha=1.2, beta=20)
     h, w = img.shape[:2]
-    x1, y1 = int(box[0].x * w), int(box[0].y * h)
-    x2, y2 = int(box[2].x * w), int(box[2].y * h)
-    cropped = img[y1:y2, x1:x2]
+    _, buffer = cv2.imencode('.jpg', img)
+    enhanced_bytes = buffer.tobytes()
+    vision_image = vision.Image(content=enhanced_bytes)
 
-    _, buffer = cv2.imencode('.jpg', cropped)
-    cropped_bytes = buffer.tobytes()
-    cropped_vision_img = vision.Image(content=cropped_bytes)
+    # Detect objects
+    objects = client.object_localization(image=vision_image).localized_object_annotations
+    clothing_obj = next((obj for obj in objects if obj.name.lower() in clothing_labels), None)
 
-    color_resp = client.image_properties(image=cropped_vision_img)
+    if clothing_obj:
+        article_raw = clothing_obj.name
+        article = label_map.get(article_raw, article_raw)
+        box = clothing_obj.bounding_poly.normalized_vertices
+        x1, y1 = int(box[0].x * w), int(box[0].y * h)
+        x2, y2 = int(box[2].x * w), int(box[2].y * h)
+        cropped = img[y1:y2, x1:x2]
+    else:
+        # Fallback using label detection
+        label_resp = client.label_detection(image=vision_image)
+        labels = label_resp.label_annotations
+        detected_labels = [
+            label.description for label in labels
+            if any(cloth in label.description.lower() for cloth in clothing_labels)
+            and label.score > 0.6
+        ]
+        if not detected_labels:
+            return {"error": "No recognizable clothing item found."}
+
+        article_raw = detected_labels[0]
+        article = label_map.get(article_raw, article_raw)
+        cropped = img  # use full image
+
+    # Extract dominant color
+    _, cropped_buf = cv2.imencode('.jpg', cropped)
+    cropped_bytes = cropped_buf.tobytes()
+    color_resp = client.image_properties(image=vision.Image(content=cropped_bytes))
+
     if not color_resp.image_properties_annotation.dominant_colors.colors:
         return {"error": "Could not extract color."}
 
     color = color_resp.image_properties_annotation.dominant_colors.colors[0].color
     rgb = (int(color.red), int(color.green), int(color.blue))
     rgb_str = f"rgb({rgb[0]}, {rgb[1]}, {rgb[2]})"
-    color_name = get_color_name(rgb)
 
     suggestions = get_ai_suggestions(
-        article, rgb, prompt, heightFeet, heightInches, buildType,
+        article, rgb, customPrompt,
+        heightFeet, heightInches, buildType,
         complexion, occasion, weather, temperature
     )
 
     return {
-        "summary": f"{color_name.capitalize()} {article.capitalize()}",
         "article": article,
         "color": rgb_str,
         "suggestions": suggestions
     }
 
-def get_ai_suggestions(article, rgb, prompt, heightFeet, heightInches, buildType, complexion, occasion, weather, temperature):
-    profile = f"Height: {heightFeet}'{heightInches}, Build: {buildType}, Complexion: {complexion}."
-    context = f"Occasion: {occasion}, Weather: {weather}, Temperature: {temperature or 'not specified'}."
-    color_str = f"rgb{rgb}"
-    style_goal = f"User style goal: {prompt}" if prompt else ""
+def get_ai_suggestions(article, rgb, customPrompt,
+                       heightFeet, heightInches, buildType,
+                       complexion, occasion, weather, temperature):
+    user_profile = []
+    if heightFeet or heightInches:
+        user_profile.append(f"Height: {heightFeet}ft {heightInches}in")
+    if buildType:
+        user_profile.append(f"Build: {buildType}")
+    if complexion:
+        user_profile.append(f"Complexion: {complexion}")
 
-    final_prompt = (
-        f"{style_goal}\n{profile}\n{context}\n"
-        f"The user is wearing a {article.lower()} in color {color_str}. "
+    context = []
+    if occasion:
+        context.append(f"Occasion: {occasion}")
+    if weather:
+        context.append(f"Weather: {weather}")
+    if temperature:
+        context.append(f"Temperature: {temperature}")
+
+    prompt = (
+        f"The user is wearing a {article.lower()} in color rgb{rgb}. "
+        f"{'User profile: ' + ', '.join(user_profile) + '.' if user_profile else ''} "
+        f"{'Context: ' + ', '.join(context) + '.' if context else ''} "
+        f"{'Extra guidance: ' + customPrompt if customPrompt else ''} "
         f"Do not suggest another {article.lower()}. "
-        f"Suggest 3 full outfit combinations to complement it."
+        f"Suggest 3 stylish outfit combinations that complement this piece."
     )
 
     if OPENAI_API_KEY:
@@ -115,7 +154,7 @@ def get_ai_suggestions(article, rgb, prompt, heightFeet, heightInches, buildType
                 },
                 json={
                     "model": "gpt-3.5-turbo",
-                    "messages": [{"role": "user", "content": final_prompt}],
+                    "messages": [{"role": "user", "content": prompt}],
                     "temperature": 0.7,
                 },
                 timeout=30,
@@ -129,7 +168,7 @@ def get_ai_suggestions(article, rgb, prompt, heightFeet, heightInches, buildType
             ]
             return suggestions or suggest_outfits(article, rgb)
         except Exception as e:
-            print("⚠️ ChatGPT fallback triggered:", str(e))
+            print("⚠️ OpenAI fallback triggered:", str(e))
 
     return suggest_outfits(article, rgb)
 
@@ -137,7 +176,7 @@ def suggest_outfits(article, rgb):
     r, g, b = rgb
     color = "red" if r > 180 else "neutral"
 
-    style_db = {
+    fallback = {
         "Jacket": {
             "red": ["Pair with black jeans and white sneakers", "Layer over a white tee"],
             "neutral": ["Try navy chinos", "Go with a pastel shirt underneath"]
@@ -152,25 +191,8 @@ def suggest_outfits(article, rgb):
         }
     }
 
-    return style_db.get(article, {}).get(color, ["Explore classic outfit pairings for this piece."])
-
-def get_color_name(rgb):
-    r, g, b = rgb
-    if r > 200 and g > 200 and b > 200:
-        return "white"
-    elif r > 200 and g < 100 and b < 100:
-        return "red"
-    elif r < 100 and g > 200 and b < 100:
-        return "green"
-    elif r < 100 and g < 100 and b > 200:
-        return "blue"
-    elif r > 200 and g > 200 and b < 100:
-        return "yellow"
-    elif r > 150 and g > 100 and b < 100:
-        return "orange"
-    elif r > 100 and g < 100 and b > 100:
-        return "purple"
-    elif r < 80 and g < 80 and b < 80:
-        return "black"
-    else:
-        return "neutral"
+    return fallback.get(article, {}).get(color, [
+        "Try matching with well-fitted complementary pieces",
+        "Add layers and accessories based on the season",
+        "Use contrast or texture to highlight the look"
+    ])
