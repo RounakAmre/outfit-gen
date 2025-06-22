@@ -7,7 +7,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [showOptional, setShowOptional] = useState(false);
-  const [prompt, setPrompt] = useState("");
+  const [prompt, setPrompt] = useState("Casual outfit for a hot day");
   const [gender, setGender] = useState("");
 
   const [optionalFields, setOptionalFields] = useState({
@@ -101,6 +101,9 @@ function App() {
         placeholder="Optional: Describe your style goal..."
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
+        onFocus={() => {
+          if (prompt === "Casual outfit for a hot day") setPrompt("");
+        }}
         rows={3}
         style={{ width: "100%", marginBottom: "1rem", padding: "0.5rem" }}
       />
@@ -221,7 +224,7 @@ function App() {
           ) : (
             <div>
               {result.summary && (
-                <p><strong>Detected:</strong> {result.summary}</p>
+                <p><strong>Detected:</strong> {result.summary.replace(/^.*?\s/, '')}</p>
               )}
               {result.color && (
                 <p>
