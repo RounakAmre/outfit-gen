@@ -61,6 +61,30 @@ function App() {
     <div style={{ fontFamily: "Arial", maxWidth: "420px", margin: "2rem auto", padding: "1rem" }}>
       <h2 style={{ textAlign: "center" }}>🧥 Outfit Analyzer</h2>
 
+      <p style={{
+        backgroundColor: "#fff3cd",
+        color: "#856404",
+        padding: "0.75rem",
+        borderRadius: "5px",
+        border: "1px solid #ffeeba",
+        marginBottom: "1rem"
+      }}>
+        📸 Please take a <strong>full picture</strong> of the clothing article for accurate detection.
+      </p>
+
+      <div style={{ textAlign: "center", marginBottom: "1rem" }}>
+        <img
+          src="https://i.imgur.com/koVkoXx.png" // Replace with your own hosted image
+          alt="How to take picture"
+          style={{
+            maxWidth: "100%",
+            height: "auto",
+            borderRadius: "8px",
+            boxShadow: "0 0 6px rgba(0,0,0,0.1)"
+          }}
+        />
+      </div>
+
       <input
         type="file"
         accept="image/*"
@@ -195,9 +219,6 @@ function App() {
             <div>
               {result.summary && (
                 <p><strong>Detected:</strong> {result.summary}</p>
-              )}
-              {result.color && (
-                <p><strong>Color (RGB):</strong> {result.color}</p>
               )}
               <p><strong>Suggestions:</strong></p>
               <ul>
