@@ -61,30 +61,18 @@ function App() {
     <div style={{ fontFamily: "Arial", maxWidth: "420px", margin: "2rem auto", padding: "1rem" }}>
       <h2 style={{ textAlign: "center" }}>🧥 Outfit Analyzer</h2>
 
-      <p style={{
-        backgroundColor: "#fff3cd",
-        color: "#856404",
-        padding: "0.75rem",
-        borderRadius: "5px",
-        border: "1px solid #ffeeba",
-        marginBottom: "1rem"
-      }}>
-        📸 Please take a <strong>full picture</strong> of the clothing article for accurate detection.
-      </p>
-
-      <div style={{ textAlign: "center", marginBottom: "1rem" }}>
-        <img
-          src="https://drive.google.com/uc?export=view&id=13s2cde2xysQdFk_8uh9-gFY50UnNSCEo"
-          alt="How to take picture"
-          style={{
-            maxWidth: "100%",
-            height: "auto",
-            borderRadius: "8px",
-            boxShadow: "0 0 6px rgba(0,0,0,0.1)"
-          }}
-        />
+      <div
+        style={{
+          backgroundColor: "#fff9db",
+          border: "1px solid #ffe58f",
+          padding: "0.75rem",
+          borderRadius: "6px",
+          marginBottom: "1rem",
+          fontSize: "0.9rem"
+        }}
+      >
+        📸 <strong>Please take a <u>full picture</u></strong> of the clothing article for accurate detection.
       </div>
-
 
       <input
         type="file"
@@ -220,6 +208,9 @@ function App() {
             <div>
               {result.summary && (
                 <p><strong>Detected:</strong> {result.summary}</p>
+              )}
+              {result.color && (
+                <p><strong>Color:</strong> {result.color}</p>
               )}
               <p><strong>Suggestions:</strong></p>
               <ul>
