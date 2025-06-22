@@ -5,6 +5,7 @@ function App() {
   const [previewUrl, setPreviewUrl] = useState(null);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("Analyzing...");
   const [isMobile, setIsMobile] = useState(false);
   const [showOptional, setShowOptional] = useState(false);
   const [prompt, setPrompt] = useState("Casual outfit for a hot day");
@@ -24,6 +25,24 @@ function App() {
     const mobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
     setIsMobile(mobile);
   }, []);
+
+  useEffect(() => {
+    let interval;
+    if (loading) {
+      const messages = [
+        "Detecting image...",
+        "Identifying outfit...",
+        "Getting outfit suggestions..."
+      ];
+      let i = 0;
+      setLoadingMessage(messages[i]);
+      interval = setInterval(() => {
+        i = (i + 1) % messages.length;
+        setLoadingMessage(messages[i]);
+      }, 1500);
+    }
+    return () => clearInterval(interval);
+  }, [loading]);
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -214,7 +233,7 @@ function App() {
           cursor: "pointer"
         }}
       >
-        {loading ? "Analyzing..." : "Analyze Outfit"}
+        {loading ? loadingMessage : "Analyze Outfit"}
       </button>
 
       {result && (
