@@ -154,71 +154,6 @@ function App() {
         {showOptional ? "Hide Optional Fields ▲" : "Add Optional Fields ▼"}
       </button>
 
-      {showOptional && (
-        <div style={{ marginBottom: "1rem" }}>
-          <label>Height:</label>
-          <div style={{ display: "flex", gap: "8px", marginBottom: "0.5rem" }}>
-            <select onChange={e => setOptionalFields({ ...optionalFields, heightFeet: e.target.value })}>
-              <option value="">Feet</option>
-              {[...Array(8)].map((_, i) => (
-                <option key={i}>{i + 4}</option>
-              ))}
-            </select>
-            <select onChange={e => setOptionalFields({ ...optionalFields, heightInches: e.target.value })}>
-              <option value="">Inches</option>
-              {[...Array(12)].map((_, i) => (
-                <option key={i}>{i}</option>
-              ))}
-            </select>
-          </div>
-
-          <label>Build Type:</label>
-          <select onChange={e => setOptionalFields({ ...optionalFields, buildType: e.target.value })}>
-            <option value="">Select</option>
-            <option>Slim</option>
-            <option>Athletic</option>
-            <option>Average</option>
-            <option>Heavyset</option>
-          </select>
-
-          <label style={{ marginTop: "0.5rem", display: "block" }}>Complexion:</label>
-          <select onChange={e => setOptionalFields({ ...optionalFields, complexion: e.target.value })}>
-            <option value="">Select</option>
-            <option>Fair</option>
-            <option>Medium</option>
-            <option>Olive</option>
-            <option>Dark</option>
-          </select>
-
-          <label style={{ marginTop: "0.5rem", display: "block" }}>Occasion:</label>
-          <select onChange={e => setOptionalFields({ ...optionalFields, occasion: e.target.value })}>
-            <option value="">Select</option>
-            <option>Casual</option>
-            <option>Work</option>
-            <option>Date</option>
-            <option>Party</option>
-          </select>
-
-          <label style={{ marginTop: "0.5rem", display: "block" }}>Weather:</label>
-          <select onChange={e => setOptionalFields({ ...optionalFields, weather: e.target.value })}>
-            <option value="">Select</option>
-            <option>Sunny</option>
-            <option>Rainy</option>
-            <option>Cloudy</option>
-            <option>Snowy</option>
-          </select>
-
-          <label style={{ marginTop: "0.5rem", display: "block" }}>Temperature:</label>
-          <select onChange={e => setOptionalFields({ ...optionalFields, temperature: e.target.value })}>
-            <option value="">Select</option>
-            <option>Hot</option>
-            <option>Warm</option>
-            <option>Cool</option>
-            <option>Freezing</option>
-          </select>
-        </div>
-      )}
-
       <button
         onClick={handleUpload}
         disabled={loading}
@@ -230,11 +165,32 @@ function App() {
           color: "#fff",
           border: "none",
           borderRadius: "5px",
-          cursor: "pointer"
+          cursor: "pointer",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          gap: "10px"
         }}
       >
+        {loading && (
+          <span style={{
+            width: "16px",
+            height: "16px",
+            border: "2px solid #fff",
+            borderTop: "2px solid transparent",
+            borderRadius: "50%",
+            animation: "spin 1s linear infinite"
+          }} />
+        )}
         {loading ? loadingMessage : "Analyze Outfit"}
       </button>
+
+      <style>
+        {`@keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }`}
+      </style>
 
       {result && (
         <div style={{ marginTop: "1rem" }}>
