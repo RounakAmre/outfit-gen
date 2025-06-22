@@ -8,6 +8,7 @@ function App() {
   const [isMobile, setIsMobile] = useState(false);
   const [showOptional, setShowOptional] = useState(false);
   const [prompt, setPrompt] = useState("");
+  const [gender, setGender] = useState("");
 
   const [optionalFields, setOptionalFields] = useState({
     heightFeet: "",
@@ -39,6 +40,7 @@ function App() {
     const formData = new FormData();
     formData.append("image", image);
     formData.append("prompt", prompt);
+    formData.append("gender", gender);
     Object.entries(optionalFields).forEach(([key, value]) =>
       formData.append(key, value)
     );
@@ -102,6 +104,19 @@ function App() {
         rows={3}
         style={{ width: "100%", marginBottom: "1rem", padding: "0.5rem" }}
       />
+
+      {/* Gender Field */}
+      <label style={{ display: "block", marginBottom: "0.5rem" }}>Gender:</label>
+      <select
+        value={gender}
+        onChange={(e) => setGender(e.target.value)}
+        style={{ width: "100%", marginBottom: "1rem", padding: "0.5rem" }}
+      >
+        <option value="">Select Gender</option>
+        <option value="Male">Male</option>
+        <option value="Female">Female</option>
+        <option value="Other">Other</option>
+      </select>
 
       <button
         onClick={() => setShowOptional(!showOptional)}
