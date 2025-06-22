@@ -74,7 +74,7 @@ function App() {
 
       <div style={{ textAlign: "center", marginBottom: "1rem" }}>
         <img
-          src="https://i.imgur.com/koVkoXx.png" // Replace with your own hosted image
+          src="https://drive.google.com/uc?export=view&id=13s2cde2xysQdFk_8uh9-gFY50UnNSCEo"
           alt="How to take picture"
           style={{
             maxWidth: "100%",
