@@ -88,7 +88,7 @@ async def analyze_image(
     )
 
     return {
-        "summary": f"{color_name.capitalize()} {article.capitalize()}",
+        "summary": article.capitalize(),  # Only article name
         "article": article,
         "color": rgb_str,
         "suggestions": suggestions

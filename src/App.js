@@ -105,7 +105,6 @@ function App() {
         style={{ width: "100%", marginBottom: "1rem", padding: "0.5rem" }}
       />
 
-      {/* Gender Field */}
       <label style={{ display: "block", marginBottom: "0.5rem" }}>Gender:</label>
       <select
         value={gender}
@@ -225,7 +224,19 @@ function App() {
                 <p><strong>Detected:</strong> {result.summary}</p>
               )}
               {result.color && (
-                <p><strong>Color:</strong> {result.color}</p>
+                <p>
+                  <strong>Color:</strong>{" "}
+                  <span style={{
+                    display: "inline-block",
+                    width: "16px",
+                    height: "16px",
+                    backgroundColor: result.color,
+                    border: "1px solid #ccc",
+                    marginRight: "8px",
+                    verticalAlign: "middle"
+                  }}></span>
+                  {result.color}
+                </p>
               )}
               <p><strong>Suggestions:</strong></p>
               <ul>
